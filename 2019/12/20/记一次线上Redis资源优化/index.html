@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>记一次线上Redis资源优化 | Stormの博客</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="#记一次线上资源优化 ##闲话最近在开发一个数据仓库的小版本，因为自己的疏忽（误以为一个重要的流程可以复用，实际不可以）导致工期估计很少而坑了自己，一周的时间都在加班搞这个事情。幸好还是扛下来，少不了同事老毕的帮助，还是很感激有这样的同事的。版本进入测试阶段，终于有时间可以来开始写写博客。这个等版本上线之后可以在来复盘一下。 今天呢，主要是想仔细来梳理一下之前做的一个版本优化，主要是针对线上的一块">
+<meta property="og:type" content="article">
+<meta property="og:title" content="记一次线上Redis资源优化">
+<meta property="og:url" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2019&#x2F;12&#x2F;20&#x2F;%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96&#x2F;index.html">
+<meta property="og:site_name" content="Stormの博客">
+<meta property="og:description" content="#记一次线上资源优化 ##闲话最近在开发一个数据仓库的小版本，因为自己的疏忽（误以为一个重要的流程可以复用，实际不可以）导致工期估计很少而坑了自己，一周的时间都在加班搞这个事情。幸好还是扛下来，少不了同事老毕的帮助，还是很感激有这样的同事的。版本进入测试阶段，终于有时间可以来开始写写博客。这个等版本上线之后可以在来复盘一下。 今天呢，主要是想仔细来梳理一下之前做的一个版本优化，主要是针对线上的一块">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-12-20T08:38:04.169Z">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Stormの博客" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Stormの博客</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">学习做一只会分享的猿</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-记一次线上Redis资源优化" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" class="article-date">
+  <time datetime="2019-12-20T08:37:31.937Z" itemprop="datePublished">2019-12-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      记一次线上Redis资源优化
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>#记一次线上资源优化</p>
+<p>##闲话<br>最近在开发一个数据仓库的小版本，因为自己的疏忽（误以为一个重要的流程可以复用，实际不可以）导致工期估计很少而坑了自己，一周的时间都在加班搞这个事情。幸好还是扛下来，少不了同事老毕的帮助，还是很感激有这样的同事的。版本进入测试阶段，终于有时间可以来开始写写博客。这个等版本上线之后可以在来复盘一下。</p>
+<p>今天呢，主要是想仔细来梳理一下之前做的一个版本优化，主要是针对线上的一块大流量业务做的Redis资源优化，优化之后这块业务内存资源节约超过65%。在不影响性能的情况下，缓存时间从1天提高到7天。话不多说，下次开始吧。</p>
+<p>##项目背景<br>公司有广告数据上报的业务，峰值在1200w+每天，均值600w+。为了应对复杂的归因流程，以及归因回调，需要将这部分数据放入缓存，以免给数据库造成太大的压力。回调相关的参数数据也是放在缓存当中的，缓存保留时间是1天。</p>
+<p>##需求变更<br>为了提高归因率，现需要把缓存时间从1天提升到7天。这意味着缓存数据量是原来的7倍，并且增加两种匹配机制，数据量又增加30%。（我们线上的Redis内存最大容量是16G，12G为告警阈值，按照现有的机制增加的话理论计算上面就已经超过阈值了，因此肯定是要优化的）</p>
+<p>##前期调研<br>为了清楚现有业务内存的占用情况，分别对涉及到的7种匹配机制进行调研。在本地分别测试10W数据的内存大小。间隔5天取近两个月的数据总量进行统计，取均值和峰值以及8倍峰值数据量，分别计算理论情况下，各个匹配机制所需要的Redis内存大小。</p>
+<p>##优化思路</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">业务层面来说，用户点击广告不一定会下载激活游戏来玩，这一层级的转化其实是有很大损失的，因此匹配回调的数据可以和点击数据剥离。考虑到不同渠道的数据格式和参数个数，检测数据类型不一样的原因，为了便于往后扩展，这里考虑使用MongoDB来存储这部分的数据。</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">为了不降低归因的效率，我们提供一个主键来允许其他系统业务定位到具体的点击数据。自然的Redis中我们就直接缓存这个主键，而不在缓存原始数据了。归因匹配上了，我们在直接通过原始数据来构造回调参数。这样即使增加了匹配机制类型，但是总的数据量还是减少了很大一部分。</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line">（对于日均量来说，减少了78.3%，对于峰值来说减少了58.7%）</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line">至此还有，最后一个问题没有解决。如何处理7天缓存的这个问题呢。从业务上面分析，对于超过一天的这部分数据，是指一个用户点击了广告，但是呢在一天之后才激活，当然这其中也存在异常激活的情况，但是比较少。</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line">为了这个少部分的数据， 而且不是热点的数据，来缓存如此庞大的数据是非常不优雅的。为此，我们使用到MongoDB的另外一个特性来解决这个问题。</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line">对于MongoDB来说，可以设置文档的自动过期时间，虽然它的精确度不是特别高，但是对于7天来说可以忽略。你是不是已经知道我要干什么了。对的，我们把超过一天缓存的数据都写到MongoDB当中，设置过期时间为7天，我们也只存储它的索引，用于定位，这个缓存库设置分片。</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">11</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">12</span></pre></td><td class="code"><pre><span class="line">这样整个优化，在理论上就可行了，接下来就是动手实践的时候。具体实施的过程还是踩了一些坑，但都是可以实战解决的。</span></pre></td></tr></table></figure>
+<p>##复盘总结</p>
+<p>对于这次优化而言，其实没有特别大的技术点，要点还是在于业务的剖析，能够准确定位哪些是热点数据，哪些是半热数据，哪些是冷数据。从而针对不同类型的数据做文章，分割开来用不同的手段将取处理。当然对于业务规模的前期调研后后期扩展的展望也是非常重要的，能够让我们清晰的知道现有系统的健康状况，能不能支撑我们做迭代，以及相对长期的迭代。</p>
+<p>我相信这还只是一个开始，未来的路还很长。Storm，砥砺前行！</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" data-id="ck4dwkhv50000b49kf7zi8s9r" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">使用docker部署高可用的Eureka集群</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/12/">December 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/11/">November 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/">记一次线上Redis资源优化</a>
+          </li>
+        
+          <li>
+            <a href="/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/">使用docker部署高可用的Eureka集群</a>
+          </li>
+        
+          <li>
+            <a href="/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/">使用docker部署我的第一个SpringBoot应用</a>
+          </li>
+        
+          <li>
+            <a href="/2019/11/28/hello-world/">Hello World</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 Storm<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>
