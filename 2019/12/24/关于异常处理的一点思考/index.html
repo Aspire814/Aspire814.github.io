@@ -14,7 +14,7 @@
 <meta property="og:site_name" content="Stormの博客">
 <meta property="og:description" content="前言关于异常处理，在网上的大部分博客大多关注编程语言本身的异常处理机制。而很少谈及在业务当中的实际应用情况。因而不是很能够get到其中的要点。这部分感觉只能自己多多思考和积累了。 最近在工作当中开发的一些基于Quartz任务调度实现的自动化功能，涉及到比较长的运行流程。包括hive数据的清洗导出，数据分包，打包成txt或者zip，多文件上传，自动重试。而每一个流程当中可能会出现诸多的异常，对应于多">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-12-24T07:23:40.627Z">
+<meta property="og:updated_time" content="2019-12-24T07:24:20.995Z">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternate" href="/atom.xml" title="Stormの博客" type="application/atom+xml">
@@ -92,8 +92,7 @@
 <p>最近在工作当中开发的一些基于Quartz任务调度实现的自动化功能，涉及到比较长的运行流程。包括hive数据的清洗导出，数据分包，打包成txt或者zip，多文件上传，自动重试。而每一个流程当中可能会出现诸多的异常，对应于多个运行的结果状态。</p>
 <p>如何保证不管结果如何，到每一个流程运行完都能标记为正确的状态，并且可以通过结果来进行自动重试，最后能够将结果信息、错误信息返回到顶层？如何编码能够避免过多的if条件判断，拥有统一的编码风格？</p>
 <p>查看了类似业务的编码，因为多状态的问题，代码判断很多导致可读性很差。对于多个渠道对应不同的上传预处理方式，直接判断处理导致代码更加臃肿。为此，我决定重构一下这块逻辑，以便更好的扩展和维护。</p>
-<p>##思路</p>
-<p>首先，将所有可能出现的正常和异常情况列出来，然后归类，设计对应的枚举值。然后定义一个统一的处理结果类，如下：</p>
+<h2 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h2><p>首先，将所有可能出现的正常和异常情况列出来，然后归类，设计对应的枚举值。然后定义一个统一的处理结果类，如下：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ResultInfo</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line">	<span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = <span class="number">1L</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">	<span class="comment">//处理结果标记</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line">	<span class="keyword">private</span> <span class="keyword">boolean</span> success = <span class="keyword">true</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line">	<span class="comment">//结果代码</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line">	<span class="keyword">private</span> String resultCode;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line">	<span class="comment">//存储的结果对象</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line">	<span class="keyword">private</span> Object model;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line">	<span class="comment">//返回信息，用于上层展示</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line">	<span class="keyword">private</span> String message;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">11</span></pre></td><td class="code"><pre><span class="line">	<span class="comment">//调用链存储结果对象</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">12</span></pre></td><td class="code"><pre><span class="line">	<span class="keyword">private</span> Map&lt;String, Object&gt; map = <span class="keyword">new</span> LinkedHashMap&lt;String, Object&gt;();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">13</span></pre></td><td class="code"><pre><span class="line">	<span class="comment">//调用链存储错误信息</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">14</span></pre></td><td class="code"><pre><span class="line">	<span class="keyword">private</span> Map&lt;String, String&gt; errorMessages = <span class="keyword">new</span> LinkedHashMap&lt;String, String&gt;();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">15</span></pre></td><td class="code"><pre><span class="line">&#125;</span></pre></td></tr></table></figure>
 
 <p>接下来，我们所有的业务处理正常返回的数据都存储到这个结果对象当中。或者定义一个统一的业务异常类来集中处理。对于具体的异常处理，我们用try catch捕获，对于底层的就通过结果对象往上层调用传。在上层业务通过取结果对象当中的代码或者错误消息还有返回数据对象等等来统一处理当前业务的状态变更，而不在下层处理导致底层模块以来上层业务。</p>
@@ -104,7 +103,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck4jjmgil00029c9kdwwlcpl8" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck4jjnb7f0004au9k9nmld2jz" class="article-share-link">Share</a>
       
       
     </footer>
