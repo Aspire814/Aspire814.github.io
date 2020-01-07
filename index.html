@@ -67,6 +67,52 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-记一次线上内存溢出" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" class="article-date">
+  <time datetime="2020-01-07T12:25:28.290Z" itemprop="datePublished">2020-01-07</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/">记一次线上内存溢出</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>今天上班刚坐到位置上，准备开始摸鱼。呸，开始工作。产品就在钉钉上怼过来一张截图，图上显示dmp系统的几个在跑任务挂了，最后运行时间是昨天下午，状态还是运行中。</p>
+<p>于是我放下手中还没啃完的烧麦，开始bug时间。从表象上来看，看不出是什么问题，因为这个业务流程相对来说比较长，每一个环节都有可能出现异常，也许是因为没有考虑到的异常未被捕获造成的。心里这样想着，cd到这个业务昨天的日志文件，是他是他就是他，我们的老朋友。看到这东西，莫名开始激动了起来呢，毕竟是线上为数不多可以看到的情况。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">Caused by: java.lang.OutOfMemoryError: GC overhead limit exceeded</span></pre></td></tr></table></figure>
+<p>在此之前呢还有</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">nested exception is com.mongodb.MongoException$CursorNotFound: Cursor 2114193476805984430 not found on server</span></pre></td></tr></table></figure>
+
+<p>于是自然的开始Google一把这个错误，说是驱动版本的问题或者响应超时。快速排出了第一种情况，那么MongoDB怎么就超时了呢。细想一下，最近开发的功能。有一处读取Hive清洗的dmp原始数据到MongoDB，这个部分是写过程但是并没有出现Hive相关的报错信息。因此最大的可能就是落在读取MongoDB这部分数据打包成压缩文件的这个点了。</p>
+<p>果然排查之后发现，在昨天的下午这个时间点。有业务人员操作了一个400W数据的包体，并且使用了其管理的5个账号。当时为了能够在同一时间处理多个任务，以及考虑到第一期清洗数据单个包体不会超过300W的情况下，开启线程池同时执行的最大线程数设置成了8。</p>
+<p>因此在这种情况下，几乎同一时段加载到内存当中的数据为5x400W=2000W 而该Java进程设置的最大内存为4G，所以超出了内存上限导致溢出。</p>
+<p>问题定位到了，就好解决了。与产品和运维沟通。该业务并不要求实时性，因此把并发线程数降到3，同时扩展内存到6G。对于大数据量的包体，进行切分，分批次查询数据append进文件中再打包。同时观察线上运行情况，及时调整，做好失败重试方案。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" data-id="ck53unwlg0002va9ka87g4vx7" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-关于异常处理的一点思考" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" class="article-date">
@@ -104,7 +150,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck4jjnb7f0004au9k9nmld2jz" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck53unwl40000va9k16je9rrn" class="article-share-link">Share</a>
       
       
     </footer>
@@ -153,7 +199,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" data-id="ck4jjnb7e0003au9k4mdlhj3p" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" data-id="ck53unwlj0004va9k9ahe0mol" class="article-share-link">Share</a>
       
       
     </footer>
@@ -201,7 +247,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/" data-id="ck4jjnb7c0002au9ke5ce5gzx" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/" data-id="ck53unwlk0005va9k2ked6m19" class="article-share-link">Share</a>
       
       
     </footer>
@@ -257,7 +303,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/" data-id="ck4jjnb750000au9kgv75garu" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/" data-id="ck53unwlh0003va9k78c9b5ss" class="article-share-link">Share</a>
       
       
     </footer>
@@ -307,7 +353,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/11/28/hello-world/" data-id="ck4jjnb7a0001au9k3u3ne4c0" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/11/28/hello-world/" data-id="ck53unwle0001va9kaa06delx" class="article-share-link">Share</a>
       
       
     </footer>
@@ -335,7 +381,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/12/">December 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/11/">November 2019</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/12/">December 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/11/">November 2019</a></li></ul>
     </div>
   </div>
 
@@ -346,6 +392,10 @@
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/">记一次线上内存溢出</a>
+          </li>
         
           <li>
             <a href="/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/">关于异常处理的一点思考</a>
@@ -363,10 +413,6 @@
             <a href="/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/">使用docker部署我的第一个SpringBoot应用</a>
           </li>
         
-          <li>
-            <a href="/2019/11/28/hello-world/">Hello World</a>
-          </li>
-        
       </ul>
     </div>
   </div>
@@ -379,7 +425,7 @@
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2019 Storm<br>
+      &copy; 2020 Storm<br>
       Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>
