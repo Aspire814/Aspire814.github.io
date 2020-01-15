@@ -67,6 +67,57 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-mysql慢查询分析" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/" class="article-date">
+  <time datetime="2020-01-15T12:37:52.425Z" itemprop="datePublished">2020-01-15</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/">mysql慢查询分析</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近线上一个报表的查询接口出现慢查询的情况，是比较重要的一个报表。虽然查询sql有些复杂但是针对现有的查询条件和数据库结构做了相关优化，之前查询一年数据在分钟内，现在查一个月数据就需要3分钟，按道理是不应该出现这个问题的。<br>但是本着透过现象看本质的心，还是放下手中刚摸到的鱼开始bug时间。</p>
+<h2 id="基础分析"><a href="#基础分析" class="headerlink" title="基础分析"></a>基础分析</h2><p>首先还是本能的定位到目标sql位置，show history了解到这个sql已经半年没有更新了。接着就explain分析，sql该走索引的地方都走了索引。<br>运维那边反馈最近除了把一个分区的数据从固态迁移到机械盘之外，其他的数据并没有动，mysql内存也是足够的。但是为了排除这个因素的影响，还是测试了一下目标分区和其他分区数据的查询速度差别，结果并没有差很多。<br>没办法，只能去追踪详细的sql执行计划了。</p>
+<h2 id="正经分析"><a href="#正经分析" class="headerlink" title="正经分析"></a>正经分析</h2><p>首先在从库上执行目标sql，免得加重主库的负担。（这个查询本就是做了读写分离的，查询走的是从库，手动滑稽）<br>但是结果诡异了，竟然只花了10s左右。说好的3分钟呢，感紧催运维查了一下，果然结果是出乎意料的。之前调整，竟然把从库域名配置干掉了，所有查询都打到主库上。赶紧让运维切换到从库去，虽然大石头放下了，但是查询还是没有之前的效果，于是继续跟踪。</p>
+<ul>
+<li><p>查看正在执行的 SQL 语句</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查询当前执行sql的id 执行用户 数据库 操作类型 耗时 状态 等等</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> information_schema.<span class="string">`PROCESSLIST`</span> <span class="keyword">where</span> info <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span></span></pre></td></tr></table></figure>
+</li>
+<li><p>查看 SQL 查询耗时</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看 profiling 功能是否已打开</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> @@profiling</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 打开 profiling</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line"><span class="keyword">set</span> <span class="keyword">global</span> profiling=<span class="number">1</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看 profiling</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line"><span class="keyword">show</span> <span class="keyword">profiles</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看某个 query 的耗时情况</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line"><span class="keyword">show</span> profile <span class="keyword">for</span> <span class="keyword">query</span> query_id</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看锁</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line"><span class="keyword">show</span> <span class="keyword">global</span> <span class="keyword">status</span> <span class="keyword">like</span> <span class="string">'%lock%'</span>;</span></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>markdown放图片还是不方便呀。从结果上显示，耗时主要发生在 Creating sort index 严重的时候耗费将近90%的时间，mysql的耗时情况分析涉及到很多的子项（mysql状态）具体可以看文末详情。<br>借助万能的Google了解到，这主要是order by 和limit引发的。当涉及到排序和分页的数据过多时性能会急剧下降。因为limit10000,20的意思扫描满足条件的10020行，扔掉前面的10000行，返回最后的20行，问题就在这里。</p>
+<h2 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h2><p>对于默认查询，不再使用order by。对于一定要使用的排序字段 建立复合索引 排序字段，主键<br>对于分页解决方案是获取到一批数据之后拿到最大的ID，加入到where条件中加入&gt;该ID条件过滤掉前面的数据，在使用子查询获取数据即可。</p>
+<h2 id="附录-sql执行状态"><a href="#附录-sql执行状态" class="headerlink" title="附录 sql执行状态"></a>附录 sql执行状态</h2><p>Checking table    正在检查数据表（这是自动的）。<br>Closing tables    正在将表中修改的数据刷新到磁盘中，同时正在关闭已经用完的表。这是一个很快的操作，如果不是这样的话，就应该确认磁盘空间是否已经满了或者磁盘是否正处于重负中。<br>Connect Out    复制从服务器正在连接主服务器。<br>Copying to tmp table on disk    由于临时结果集大于tmp_table_size，正在将临时表从内存存储转为磁盘存储以此节省内存。<br>Creating tmp table    正在创建临时表以存放部分查询结果。<br>deleting from main table    服务器正在执行多表删除中的第一部分，刚删除第一个表。<br>deleting from reference tables    服务器正在执行多表删除中的第二部分，正在删除其他表的记录。<br>Flushing tables    正在执行FLUSH TABLES，等待其他线程关闭数据表。<br>Killed    发送了一个kill请求给某线程，那么这个线程将会检查kill标志位，同时会放弃下一个kill请求。MySQL会在每次的主循环中检查kill标志位，不过有些情况下该线程可能会过一小段才能死掉。如果该线程程被其他线程锁住了，那么kill请求会在锁释放时马上生效。<br>Locked    被其他查询锁住了。<br>Sending data    正在处理SELECT查询的记录，同时正在把结果发送给客户端。<br>Sorting for group    正在为GROUP BY做排序。<br>Sorting for order    正在为ORDER BY做排序。<br>Opening tables    这个过程应该会很快，除非受到其他因素的干扰。例如，在执ALTER TABLE或LOCK TABLE语句行完以前，数据表无法被其他线程打开。正尝试打开一个表。<br>Removing duplicates    正在执行一个SELECT DISTINCT方式的查询，但是MySQL无法在前一个阶段优化掉那些重复的记录。因此，MySQL需要再次去掉重复的记录，然后再把结果发送给客户端。<br>Reopen table    获得了对一个表的锁，但是必须在表结构修改之后才能获得这个锁。已经释放锁，关闭数据表，正尝试重新打开数据表。<br>Repair by sorting    修复指令正在排序以创建索引。<br>Repair with keycache    修复指令正在利用索引缓存一个一个地创建新索引。它会比Repair by sorting慢些。<br>Searching rows for update    正在讲符合条件的记录找出来以备更新。它必须在UPDATE要修改相关的记录之前就完成了。<br>Sleeping    正在等待客户端发送新请求.<br>System lock    正在等待取得一个外部的系统锁。如果当前没有运行多个mysqld服务器同时请求同一个表，那么可以通过增加–skip-external-locking参数来禁止外部系统锁。<br>Upgrading lock    INSERT DELAYED正在尝试取得一个锁表以插入新记录。<br>Updating    正在搜索匹配的记录，并且修改它们。<br>User Lock    正在等待GET_LOCK()。<br>Waiting for tables    该线程得到通知，数据表结构已经被修改了，需要重新打开数据表以取得新的结构。然后，为了能的重新打开数据表，必须等到所有其他线程关闭这个表。以下几种情况下会产生这个通知：FLUSH TABLES tbl_name, ALTER TABLE, RENAME TABLE, REPAIR TABLE, ANALYZE TABLE 或 OPTIMIZE TABLE<br>waiting for handler insert    INSERT DELAYED已经处理完了所有待处理的插入操作，正在等待新的请求。<br>after create    线程创建一个表或临时表的最后会进入该状态<br>Analyzing    线程正在分析一个 MyISAM 表或索引描述（例如 ANALYZE TABLE）<br>checking permissions    线程在查看是否具有权限<br>Checking table    表检查操作<br>cleaning up    线程已处理了一个命令，正在准备释放内存和资源<br>closing tables    线程将更改的表数据刷新到磁盘并关闭使用的表<br>converting HEAP to MyISAM    线程正在将内存表中的内部临时表转换为磁盘上的 MyISAM 表<br>copy to tmp table    线程正在执行一条 alter table 语句，已创建新结构的表，正在将数据复制到新结构的表中<br>Copying to group table    一条语句的ORDER BY和GROUP BY条件不同时，将数据行按组排序并复制到临时表中<br>Copying to tmp table    复制数据到内存中的一张临时表中<br>Copying to tmp table on disk    由于临时结果集大于 tmp_table_size，所以线程正在将临时表从内存中更改为基于磁盘的格式保存<br>Creating index    线程正在对一个 MyISAM 表执行 ALTER TABLE … ENABLE KEYS<br>Creating sort index    正在执行一个使用内部临时表的查询<br>creating table    正在创建一个表（包括临时表）<br>Creating tmp table    线程正在内存或磁盘上创建一个临时表。如果表是在内存中创建的，但稍后被转换为磁盘上的表，则该操作期间的状态将复制到磁盘上的tmp表</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/" data-id="ck5fam7eh0000wf9kh0nr1bs4" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-记一次线上内存溢出" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" class="article-date">
@@ -103,7 +154,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" data-id="ck53unwlg0002va9ka87g4vx7" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" data-id="ck5fam7f20005wf9kd65d84pf" class="article-share-link">Share</a>
       
       
     </footer>
@@ -150,7 +201,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck53unwl40000va9k16je9rrn" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck5fam7ey0002wf9k023cgwt9" class="article-share-link">Share</a>
       
       
     </footer>
@@ -199,7 +250,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" data-id="ck53unwlj0004va9k9ahe0mol" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" data-id="ck5fam7f40006wf9kdf8mb2t1" class="article-share-link">Share</a>
       
       
     </footer>
@@ -247,7 +298,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/" data-id="ck53unwlk0005va9k2ked6m19" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/" data-id="ck5fam7f00003wf9kgpxr4t7r" class="article-share-link">Share</a>
       
       
     </footer>
@@ -303,7 +354,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/" data-id="ck53unwlh0003va9k78c9b5ss" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/" data-id="ck5fam7ew0001wf9k3p7r6kp3" class="article-share-link">Share</a>
       
       
     </footer>
@@ -353,7 +404,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/11/28/hello-world/" data-id="ck53unwle0001va9kaa06delx" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/11/28/hello-world/" data-id="ck5fam7f10004wf9k2fib70mv" class="article-share-link">Share</a>
       
       
     </footer>
@@ -394,6 +445,10 @@
       <ul>
         
           <li>
+            <a href="/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/">mysql慢查询分析</a>
+          </li>
+        
+          <li>
             <a href="/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/">记一次线上内存溢出</a>
           </li>
         
@@ -407,10 +462,6 @@
         
           <li>
             <a href="/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/">使用docker部署高可用的Eureka集群</a>
-          </li>
-        
-          <li>
-            <a href="/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/">使用docker部署我的第一个SpringBoot应用</a>
           </li>
         
       </ul>
