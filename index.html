@@ -67,6 +67,51 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-关于单元测试的一点思考" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" class="article-date">
+  <time datetime="2020-01-17T14:05:25.791Z" itemprop="datePublished">2020-01-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/">关于单元测试的一点思考</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>Hello,我是Storm。今天呢很想就单元测试这个点整理一下。在平时的coding当中，其实单元测试应该是用的比较多的，但是不知道大家有没有跟我有一样的感受。在测试自己的工具类或者比较简单的模块时，用junit等这样的测试框架就很方便的解决了问题。但是一旦测试的代码依赖于太多第三方的模块，或者自己写的其他模块代码，测试就变得非常麻烦，因为你需要启动这些三方服务或者模块。特别是分布式环境下，自己开发机器又不是性能优越的情况下那简直就是噩梦。</p>
+<h1 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h1><p>那有没有方便的测试思想或者方法甚至工具可以帮我们摆脱这种困扰呢，答案是肯定的。但是还是想自己来想一想，这个背后到底是怎么个原理。针对我们遇到的问题，无非就是“解耦”，如何在不影响现有测试流程的情况下，把测试需要的环境给准备好。</p>
+<p>例如需要某个接口服务，这个接口服务我们不关心它是分布式的还是单例的，网络状况如何，我只关注它给我返回的数据。在java中我们就可以借助依赖注入的方式来解决，自己实现一个接口，或者直接new一个服务，覆盖其方法，返回值直接设置成我们需要的数据，以此来模拟实例化一个服务。甚至我们可以自定义一个流程，在调用某些方法的前后来定制这个入参和返回值，以此达到测试的目的。</p>
+<p>同时我也发现一个问题，对于服务、接口我们可以依赖注入的方式来规避，但是静态方法呢就不太好处理了。简单的方法还好，对于复杂的静态方法引入了过多外部资源其实很影响代码的可测试性，因此提醒自己在写码的时候要注意规避这种问题，也算是测试驱动开发（TDD）的一种应用吧。</p>
+<h1 id="mock"><a href="#mock" class="headerlink" title="mock"></a>mock</h1><p>mock即模拟，在测试领域指的是模拟与测试相关的数据和环境，达到解耦第三方依赖的目的而只关注测试目标本体的思想方法。在java生态中比较常用的mock工具有EasyMock（早起流行）、Mockito（改进了EasyMock,主流）、PowerMock(主流)、Jmockit（轻量）等等。这里我简单介绍一下Mockito的用法。</p>
+<p>Mockito可以让你轻松模拟任何Java类行为和数据，并且可以跟踪执行流程，自定义测试节点的参数和方法返回值，从而解耦第三方依赖，简化单元测试。<br><img src="http://118.89.17.131:8090/upload/2020/1/PUZZLE-1-min%20(1)-deeefee3ac0743b0bc64b34c2292260a.png" alt="PUZZLE1min 1.png"></p>
+<h1 id="Mockito基本使用"><a href="#Mockito基本使用" class="headerlink" title="Mockito基本使用"></a>Mockito基本使用</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">   <span class="meta">@Test</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">createMockObject</span><span class="params">()</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">// 使用 mock 静态方法创建 Mock 对象.</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line">       List mockedList = mock(List<span class="class">.<span class="keyword">class</span>)</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line">       Assert.assertTrue(mockedList <span class="keyword">instanceof</span> List);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">// mock 方法不仅可以 Mock 接口类, 还可以 Mock 具体的类型.</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line">       ArrayList mockedArrayList = mock(ArrayList<span class="class">.<span class="keyword">class</span>)</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line">       Assert.assertTrue(mockedArrayList <span class="keyword">instanceof</span> List);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line">       Assert.assertTrue(mockedArrayList <span class="keyword">instanceof</span> ArrayList);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">11</span></pre></td><td class="code"><pre><span class="line">   &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">12</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">13</span></pre></td><td class="code"><pre><span class="line">   <span class="meta">@Test</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">14</span></pre></td><td class="code"><pre><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">configMockObject</span><span class="params">()</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">15</span></pre></td><td class="code"><pre><span class="line"><span class="comment">//定制类行为</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">16</span></pre></td><td class="code"><pre><span class="line">       List mockedList = mock(List<span class="class">.<span class="keyword">class</span>)</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">17</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">18</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">// 我们定制了当调用 mockedList.add("one") 时, 返回 true</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">19</span></pre></td><td class="code"><pre><span class="line">       when(mockedList.add(<span class="string">"one"</span>)).thenReturn(<span class="keyword">true</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">20</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">// 当调用 mockedList.size() 时, 返回 1</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">21</span></pre></td><td class="code"><pre><span class="line">       when(mockedList.size()).thenReturn(<span class="number">1</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">22</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">23</span></pre></td><td class="code"><pre><span class="line">       Assert.assertTrue(mockedList.add(<span class="string">"one"</span>));</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">24</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">// 因为我们没有定制 add("two"), 因此返回默认值, 即 false.</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">25</span></pre></td><td class="code"><pre><span class="line">       Assert.assertFalse(mockedList.add(<span class="string">"two"</span>));</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">26</span></pre></td><td class="code"><pre><span class="line">       Assert.assertEquals(mockedList.size(), <span class="number">1</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">27</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">28</span></pre></td><td class="code"><pre><span class="line">       Iterator i = mock(Iterator<span class="class">.<span class="keyword">class</span>)</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">29</span></pre></td><td class="code"><pre><span class="line">       when(i.next()).thenReturn(<span class="string">"Hello,"</span>).thenReturn(<span class="string">"Mockito!"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">30</span></pre></td><td class="code"><pre><span class="line">       String result = i.next() + <span class="string">" "</span> + i.next();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">31</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">//assert</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">32</span></pre></td><td class="code"><pre><span class="line">       Assert.assertEquals(<span class="string">"Hello, Mockito!"</span>, result);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">33</span></pre></td><td class="code"><pre><span class="line">   &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">34</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">35</span></pre></td><td class="code"><pre><span class="line">   <span class="meta">@Test</span>(expected = NoSuchElementException<span class="class">.<span class="keyword">class</span>)</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">36</span></pre></td><td class="code"><pre><span class="line"><span class="class">   <span class="title">public</span> <span class="title">void</span> <span class="title">testForIOException</span>() <span class="title">throws</span> <span class="title">Exception</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">37</span></pre></td><td class="code"><pre><span class="line"><span class="comment">//模拟异常</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">38</span></pre></td><td class="code"><pre><span class="line">       Iterator i = mock(Iterator<span class="class">.<span class="keyword">class</span>)</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">39</span></pre></td><td class="code"><pre><span class="line">       when(i.next()).thenReturn(<span class="string">"Hello,"</span>).thenReturn(<span class="string">"Mockito!"</span>); <span class="comment">// 1</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">40</span></pre></td><td class="code"><pre><span class="line">       String result = i.next() + <span class="string">" "</span> + i.next(); <span class="comment">// 2</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">41</span></pre></td><td class="code"><pre><span class="line">       Assert.assertEquals(<span class="string">"Hello, Mockito!"</span>, result);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">42</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">43</span></pre></td><td class="code"><pre><span class="line">       doThrow(<span class="keyword">new</span> NoSuchElementException()).when(i).next(); <span class="comment">// 3</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">44</span></pre></td><td class="code"><pre><span class="line">       i.next(); <span class="comment">// 4</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">45</span></pre></td><td class="code"><pre><span class="line">   &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">46</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">47</span></pre></td><td class="code"><pre><span class="line">   <span class="meta">@Test</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">48</span></pre></td><td class="code"><pre><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testVerify</span><span class="params">()</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">49</span></pre></td><td class="code"><pre><span class="line"><span class="comment">//验证方法调用情况</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">50</span></pre></td><td class="code"><pre><span class="line">       List mockedList = mock(List<span class="class">.<span class="keyword">class</span>)</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">51</span></pre></td><td class="code"><pre><span class="line">       mockedList.add(<span class="string">"one"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">52</span></pre></td><td class="code"><pre><span class="line">       mockedList.add(<span class="string">"two"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">53</span></pre></td><td class="code"><pre><span class="line">       mockedList.add(<span class="string">"three times"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">54</span></pre></td><td class="code"><pre><span class="line">       mockedList.add(<span class="string">"three times"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">55</span></pre></td><td class="code"><pre><span class="line">       mockedList.add(<span class="string">"three times"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">56</span></pre></td><td class="code"><pre><span class="line">       when(mockedList.size()).thenReturn(<span class="number">5</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">57</span></pre></td><td class="code"><pre><span class="line">       Assert.assertEquals(mockedList.size(), <span class="number">5</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">58</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">59</span></pre></td><td class="code"><pre><span class="line">       verify(mockedList, atLeastOnce()).add(<span class="string">"one"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">60</span></pre></td><td class="code"><pre><span class="line">       verify(mockedList, times(<span class="number">1</span>)).add(<span class="string">"two"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">61</span></pre></td><td class="code"><pre><span class="line">       verify(mockedList, times(<span class="number">3</span>)).add(<span class="string">"three times"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">62</span></pre></td><td class="code"><pre><span class="line">       verify(mockedList, never()).isEmpty();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">63</span></pre></td><td class="code"><pre><span class="line">   &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">64</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">65</span></pre></td><td class="code"><pre><span class="line">   <span class="meta">@Test</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">66</span></pre></td><td class="code"><pre><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testSpy</span><span class="params">()</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">67</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">//Mockito 提供的 spy 方法可以包装一个真实的 Java 对象, 并返回一个包装后的新对象. </span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">68</span></pre></td><td class="code"><pre><span class="line"><span class="comment">//若没有特别配置的话, 对这个新对象的所有方法调用, 都会委派给实际的 Java 对象.</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">69</span></pre></td><td class="code"><pre><span class="line">       List list = <span class="keyword">new</span> LinkedList();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">70</span></pre></td><td class="code"><pre><span class="line">       List spy = spy(list);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">71</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">72</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">// 对 spy.size() 进行定制.</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">73</span></pre></td><td class="code"><pre><span class="line">       when(spy.size()).thenReturn(<span class="number">100</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">74</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">75</span></pre></td><td class="code"><pre><span class="line">       spy.add(<span class="string">"one"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">76</span></pre></td><td class="code"><pre><span class="line">       spy.add(<span class="string">"two"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">77</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">78</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">// 因为我们没有对 get(0), get(1) 方法进行定制,</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">79</span></pre></td><td class="code"><pre><span class="line">       <span class="comment">// 因此这些调用其实是调用的真实对象的方法.</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">80</span></pre></td><td class="code"><pre><span class="line">       Assert.assertEquals(spy.get(<span class="number">0</span>), <span class="string">"one"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">81</span></pre></td><td class="code"><pre><span class="line">       Assert.assertEquals(spy.get(<span class="number">1</span>), <span class="string">"two"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">82</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">83</span></pre></td><td class="code"><pre><span class="line">       Assert.assertEquals(spy.size(), <span class="number">100</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">84</span></pre></td><td class="code"><pre><span class="line">   &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">85</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">86</span></pre></td><td class="code"><pre><span class="line">   <span class="meta">@Test</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">87</span></pre></td><td class="code"><pre><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testCaptureArgument</span><span class="params">()</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">88</span></pre></td><td class="code"><pre><span class="line"><span class="comment">//参数模拟</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">89</span></pre></td><td class="code"><pre><span class="line">       List&lt;String&gt; list = Arrays.asList(<span class="string">"1"</span>, <span class="string">"2"</span>);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">90</span></pre></td><td class="code"><pre><span class="line">       List mockedList = mock(List<span class="class">.<span class="keyword">class</span>)</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">91</span></pre></td><td class="code"><pre><span class="line">       ArgumentCaptor&lt;List&gt; argument = ArgumentCaptor.forClass(List<span class="class">.<span class="keyword">class</span>)</span>;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">92</span></pre></td><td class="code"><pre><span class="line">       mockedList.addAll(list);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">93</span></pre></td><td class="code"><pre><span class="line">       verify(mockedList).addAll(argument.capture());</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">94</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">95</span></pre></td><td class="code"><pre><span class="line">       Assert.assertEquals(<span class="number">2</span>, argument.getValue().size());</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">96</span></pre></td><td class="code"><pre><span class="line">       Assert.assertEquals(list, argument.getValue());</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">97</span></pre></td><td class="code"><pre><span class="line">   &#125;</span></pre></td></tr></table></figure>
+
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>利用现代化的测试工具和框架能够大大简化日常开发当中涉及到的一些测试工作量，但是也要保持一颗求真的心，知道其背后的思想，才能沉淀成自己的东西。也会加深自己对于框架和工具的理解，更好的使用它。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck5i8jujr00051t9kbuqz24ou" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-mysql慢查询分析" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/" class="article-date">
@@ -108,7 +153,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/" data-id="ck5fam7eh0000wf9kh0nr1bs4" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/" data-id="ck5i8jujd00031t9kcvi38mvy" class="article-share-link">Share</a>
       
       
     </footer>
@@ -154,7 +199,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" data-id="ck5fam7f20005wf9kd65d84pf" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" data-id="ck5i8jujt00061t9kfphhfzzl" class="article-share-link">Share</a>
       
       
     </footer>
@@ -201,7 +246,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck5fam7ey0002wf9k023cgwt9" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck5i8juje00041t9k0yg28mmo" class="article-share-link">Share</a>
       
       
     </footer>
@@ -250,7 +295,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" data-id="ck5fam7f40006wf9kdf8mb2t1" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" data-id="ck5i8jujv00071t9k92q471u3" class="article-share-link">Share</a>
       
       
     </footer>
@@ -298,7 +343,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/" data-id="ck5fam7f00003wf9kgpxr4t7r" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/" data-id="ck5i8juja00011t9k9mu7dr4b" class="article-share-link">Share</a>
       
       
     </footer>
@@ -354,7 +399,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/" data-id="ck5fam7ew0001wf9k3p7r6kp3" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/" data-id="ck5i8juj300001t9kfs2l90sz" class="article-share-link">Share</a>
       
       
     </footer>
@@ -404,7 +449,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/11/28/hello-world/" data-id="ck5fam7f10004wf9k2fib70mv" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/11/28/hello-world/" data-id="ck5i8jujc00021t9k1vwg1xby" class="article-share-link">Share</a>
       
       
     </footer>
@@ -445,6 +490,10 @@
       <ul>
         
           <li>
+            <a href="/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/">关于单元测试的一点思考</a>
+          </li>
+        
+          <li>
             <a href="/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/">mysql慢查询分析</a>
           </li>
         
@@ -458,10 +507,6 @@
         
           <li>
             <a href="/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/">记一次线上Redis资源优化</a>
-          </li>
-        
-          <li>
-            <a href="/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/">使用docker部署高可用的Eureka集群</a>
           </li>
         
       </ul>
