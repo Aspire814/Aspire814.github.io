@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>关于CAS思想的一些思考 | Stormの博客</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="前言最近在复习java的一些基础知识，重新对于一些比较模糊的概念进行了一番梳理。用一些实际的案例来加深自己的理解证实是一个行之有效的好办法。关于CAS其实早有耳闻，在刚刚开始接触java的时候遍已经听闻过它的大名，然而所学尚欠火候，始终无法得其真谛，现今虽不能自信地说完全懂得，但好歹有一些自己总结的东西可以聊聊。 乐观锁首先在谈及CAS之前，还是得先聊聊乐观锁这个概念。顾名思义，乐观乐观即总是倾向">
+<meta property="og:type" content="article">
+<meta property="og:title" content="关于CAS思想的一些思考">
+<meta property="og:url" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;02&#x2F;29&#x2F;%E5%85%B3%E4%BA%8ECAS%E6%80%9D%E6%83%B3%E7%9A%84%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83&#x2F;index.html">
+<meta property="og:site_name" content="Stormの博客">
+<meta property="og:description" content="前言最近在复习java的一些基础知识，重新对于一些比较模糊的概念进行了一番梳理。用一些实际的案例来加深自己的理解证实是一个行之有效的好办法。关于CAS其实早有耳闻，在刚刚开始接触java的时候遍已经听闻过它的大名，然而所学尚欠火候，始终无法得其真谛，现今虽不能自信地说完全懂得，但好歹有一些自己总结的东西可以聊聊。 乐观锁首先在谈及CAS之前，还是得先聊聊乐观锁这个概念。顾名思义，乐观乐观即总是倾向">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2020-02-29T09:56:55.575Z">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Stormの博客" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Stormの博客</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">学习做一只会分享的猿</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-关于CAS思想的一些思考" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/02/29/%E5%85%B3%E4%BA%8ECAS%E6%80%9D%E6%83%B3%E7%9A%84%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83/" class="article-date">
+  <time datetime="2020-02-29T09:56:55.575Z" itemprop="datePublished">2020-02-29</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      关于CAS思想的一些思考
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近在复习java的一些基础知识，重新对于一些比较模糊的概念进行了一番梳理。用一些实际的案例来加深自己的理解证实是一个行之有效的好办法。<br>关于CAS其实早有耳闻，在刚刚开始接触java的时候遍已经听闻过它的大名，然而所学尚欠火候，始终无法得其真谛，现今虽不能自信地说完全懂得，但好歹有一些自己总结的东西可以聊聊。</p>
+<h2 id="乐观锁"><a href="#乐观锁" class="headerlink" title="乐观锁"></a>乐观锁</h2><p>首先在谈及CAS之前，还是得先聊聊乐观锁这个概念。顾名思义，乐观乐观即总是倾向于把事情往好的方面去想。 锁呢，大家应该都不陌生了。<br>在并发环境中，为了保证数据的安全性而设立的一种保障机制。字大家都认识，但有时候组合起来吧就懵圈了。咳咳，回到正题上来。<br>乐观锁呢，实际属于一种概念，我们可以理解为接口定义，定义它是干什么用的，而CAS呢其实是它的一种实现。可以试着这么去理解，<br>即在对目标数据进行修改前，我总是倾向于相信这个数据当前没有人修改，只有我自己。那我就直接读取数据，然后修改成我想要的值，但是为了确保万无一失（想着没人改不代表就没人改）<br>在准备提交的时候呢再校验一下是不是有人修改了。因为我只是倾向于相信没有人修改，但是实际有没有呢这个是只有验证才知道的。<br>（我们暂时先不去管怎么个验证法）因为它还不是具体实现机制。如果没人修改就直接提交，<br>如果有人修改就说明自己的倾向判断错了，需要重新读取最新数据，回到这个验证的过程，一直重复这个过程直到确定没人修改再提交。</p>
+<h2 id="CAS"><a href="#CAS" class="headerlink" title="CAS"></a>CAS</h2><p>CAS(Compare And Set)是乐观锁的一种具体实现机制，从名字上就能看出来是基于比较的一种机制。上文的介绍中我没有详细进行说明的验证方法，在CAS中其实是这么执行的。读取目标数据后，缓存起来。<br>然后带着想要设置的值进入准备提交的阶段，这时再读取一次目标数据，比较缓存值和当前目标值是否一致（目标值必须是内存可见的，在java中使用volatile修饰）。如果数据一致则代表当前没有其他人（线程）操作目标。<br>这时就可以放心提交啦，但是如果不相等就需要再次回到读取验证和预提交的环节。这个环节可以称之为“自旋”。（因为如果线程竞争比较激烈的时候，它就一直在循环读取比较啦，宏观表象就是转圈）。</p>
+<h2 id="ABA问题"><a href="#ABA问题" class="headerlink" title="ABA问题"></a>ABA问题</h2><p>关于上述基本的CAS原理，大家应该都看明白了，因为还是比较简单的。但是这个机制真的没问题吗，其实暴露了一个称之为“ABA”的问题。细心的小伙伴想必应该已经发现了，<br>就是我们验证缓存值和当前目标值相不相等，以此来作为是否有线程修改的依据其实是有问题的。如果我们缓存值为0，我们的线程想把它更改为1，这个时候我们还没有读取值，但是有另一个线程把它改为了1随后马上又改成了0，<br>这时我们的线程读取目标值也为0。虽然结果一样，但是中间过程却隐藏了，程序无法感知，这就是“ABA”问题。</p>
+<h2 id="解决ABA"><a href="#解决ABA" class="headerlink" title="解决ABA"></a>解决ABA</h2><p>那如何解决ABA问题呢，我们引入一个版本号的概念，目标值初始化时给定一个版本，例如1.0，在修改目标值的时候我们就加一个版本。以后每次判断目标值与缓存值相不相等的时候必须校验值和版本是否一致，<br>其中有一个不一致的时候必须重新从内存读写最新的值。这样就不存在“ABA”问题了。</p>
+<h2 id="悲观锁"><a href="#悲观锁" class="headerlink" title="悲观锁"></a>悲观锁</h2><p>以上关于乐观锁和CAS的介绍就差不多了，相对乐观锁其实就有悲观锁的说法。概念上也是很好理解的，在操作目标数据时，总是倾向于认为有人也在修改数据，为了保证数据安全，我必须先锁住当前目标才敢操作（排他性）。<br>在java当中synchronized就是悲观锁的一种实现，是不是很好理解呢，被它修饰的方法都是同步执行的。</p>
+<h2 id="效率比较"><a href="#效率比较" class="headerlink" title="效率比较"></a>效率比较</h2><p>从实现上来讲，其实很直观的能看出乐观锁比悲观锁的效率要更高。因为悲观锁是宁可错杀一千，不可放过一个，一律同步执行。就synchronized这种JVM层级的锁来说早期实现是比较重的，执行效率很慢，<br>但是经过这么多年的版本迭代更新，它的效率已经不可同日而语了。但是具体的效率还是得看线程并发环境，如果竞争非常激烈，乐观锁因为长时间的自旋其实会拖慢效率甚至比使用悲观锁还要慢。</p>
+<h2 id="应用"><a href="#应用" class="headerlink" title="应用"></a>应用</h2><ul>
+<li>jdk1.8当中ConcurrentHashMap是直接使用的 CAS + Synchronized来保证线程安全的。（1.7当中使用的是分段可重入锁ReentrantLock）相反的HashTable和Collections.synchronizedMap()则直接使用的是synchronized这种悲观锁来保证线程安全，<br>在一般情况下前者的效率还是大大比后者好的。</li>
+<li>CAS在自旋锁当中也有运用，只是把资源换成了锁，有兴趣的小伙伴可以自行查阅，是很好理解的</li>
+<li>java轻量级锁属于乐观锁，重量级锁的实现属于悲观锁</li>
+<li>基于自旋锁可以动态根据竞争压力调整锁的策略，从偏向锁转化为轻量级或者重量级锁（锁状态：无锁状态、偏向锁、轻量级锁和重量级锁，单向升级从低到高）JDK 1.6中默认是开启偏向锁和轻量级锁的。</li>
+</ul>
+<h2 id="后记"><a href="#后记" class="headerlink" title="后记"></a>后记</h2><p>掌握CAS的思想，对于创建复杂多变的多线程应用是很有帮助的，借此可以实现轻量级的线程安全机制，对于理解很多复杂的程序设计思想（流行的redis事务等等）也有很好的果效。这期的分享完啦，前路慢慢，以此为记。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2020/02/29/%E5%85%B3%E4%BA%8ECAS%E6%80%9D%E6%83%B3%E7%9A%84%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83/" data-id="ck77fnnid0002rq9k4vbrdyxp" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">关于单元测试的一点思考</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/12/">December 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/11/">November 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/02/29/%E5%85%B3%E4%BA%8ECAS%E6%80%9D%E6%83%B3%E7%9A%84%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83/">关于CAS思想的一些思考</a>
+          </li>
+        
+          <li>
+            <a href="/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/">关于单元测试的一点思考</a>
+          </li>
+        
+          <li>
+            <a href="/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/">mysql慢查询分析</a>
+          </li>
+        
+          <li>
+            <a href="/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/">记一次线上内存溢出</a>
+          </li>
+        
+          <li>
+            <a href="/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/">关于异常处理的一点思考</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 Storm<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>
