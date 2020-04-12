@@ -67,6 +67,50 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-代理模式" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/" class="article-date">
+  <time datetime="2020-04-12T13:46:56.829Z" itemprop="datePublished">2020-04-12</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/">代理模式</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="代理模式"><a href="#代理模式" class="headerlink" title="代理模式"></a>代理模式</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>作为结构型设计模式的一种，代理模式解决的是关于扩展与原有业务不太相关的功能的问题。当我们需要对一些功能进行统一增强（一些公关的功能），但是又不侵入原有代码的时候，代理模式就能发挥大作用。</p>
+<p>例如我们熟知的日志功能，关于Spring AOP 的前置，环绕，后置通知等等。大多是基于代理模式来实现的，所谓代理就是代替被代理人（对象）来执行一些事情。</p>
+<p>最简单的实现，即在代理类中注入被代理的对象，实现与代理对象同样的接口，在实现方法当中增加目标逻辑，再调用被代理类的目标方法。使用时，我们直接使用代理对象代替目标对象来完成原有的逻辑处理。</p>
+<h2 id="动态代理"><a href="#动态代理" class="headerlink" title="动态代理"></a>动态代理</h2><p>简单的代理模式虽然解决了代码侵入的问题，但是因为设计模式的引入使得复杂度也有所上升。因为在代理类中我们又把接口所有的方法又重新实现了一遍，基本上没有太大的变动，这造成了很多重复的工作。另外假如我们要增强的功能不止一个的话，我们就需要创建多个代理类来达到目的了。这样的话类结构就会膨胀很多。</p>
+<p>为了解决以上的问题，我们引入动态代理的概念来解决这样的问题。即，我们不在事先不需要为每个目标类编写代理类。而是在程序运行时才动态的去组装代理类，然后替换原始类。整个过程基于Java的反射机制来完成。在Java中常使用原始的JDK动态代理和第三方的CGlib动态代理来实现上述过程。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MetricsCollectorProxy</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">  <span class="keyword">private</span> MetricsCollector metricsCollector;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line">  <span class="function"><span class="keyword">public</span> <span class="title">MetricsCollectorProxy</span><span class="params">()</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line">    <span class="keyword">this</span>.metricsCollector = <span class="keyword">new</span> MetricsCollector();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line">  &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line">  <span class="function"><span class="keyword">public</span> Object <span class="title">createProxy</span><span class="params">(Object proxiedObject)</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line">    Class&lt;?&gt;[] interfaces = proxiedObject.getClass().getInterfaces();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">11</span></pre></td><td class="code"><pre><span class="line">    DynamicProxyHandler handler = <span class="keyword">new</span> DynamicProxyHandler(proxiedObject);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">12</span></pre></td><td class="code"><pre><span class="line">    <span class="keyword">return</span> Proxy.newProxyInstance(proxiedObject.getClass().getClassLoader(), interfaces, handler);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">13</span></pre></td><td class="code"><pre><span class="line">  &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">14</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">15</span></pre></td><td class="code"><pre><span class="line">  <span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">DynamicProxyHandler</span> <span class="keyword">implements</span> <span class="title">InvocationHandler</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">16</span></pre></td><td class="code"><pre><span class="line">    <span class="keyword">private</span> Object proxiedObject;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">17</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">18</span></pre></td><td class="code"><pre><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">DynamicProxyHandler</span><span class="params">(Object proxiedObject)</span> </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">19</span></pre></td><td class="code"><pre><span class="line">      <span class="keyword">this</span>.proxiedObject = proxiedObject;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">20</span></pre></td><td class="code"><pre><span class="line">    &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">21</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">22</span></pre></td><td class="code"><pre><span class="line">    <span class="meta">@Override</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">23</span></pre></td><td class="code"><pre><span class="line">    <span class="function"><span class="keyword">public</span> Object <span class="title">invoke</span><span class="params">(Object proxy, Method method, Object[] args)</span> <span class="keyword">throws</span> Throwable </span>&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">24</span></pre></td><td class="code"><pre><span class="line">      <span class="keyword">long</span> startTimestamp = System.currentTimeMillis();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">25</span></pre></td><td class="code"><pre><span class="line">      Object result = method.invoke(proxiedObject, args);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">26</span></pre></td><td class="code"><pre><span class="line">      <span class="keyword">long</span> endTimeStamp = System.currentTimeMillis();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">27</span></pre></td><td class="code"><pre><span class="line">      <span class="keyword">long</span> responseTime = endTimeStamp - startTimestamp;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">28</span></pre></td><td class="code"><pre><span class="line">      String apiName = proxiedObject.getClass().getName() + <span class="string">":"</span> + method.getName();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">29</span></pre></td><td class="code"><pre><span class="line">      RequestInfo requestInfo = <span class="keyword">new</span> RequestInfo(apiName, responseTime, startTimestamp);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">30</span></pre></td><td class="code"><pre><span class="line">      metricsCollector.recordRequest(requestInfo);</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">31</span></pre></td><td class="code"><pre><span class="line">      <span class="keyword">return</span> result;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">32</span></pre></td><td class="code"><pre><span class="line">    &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">33</span></pre></td><td class="code"><pre><span class="line">  &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">34</span></pre></td><td class="code"><pre><span class="line">&#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">35</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">36</span></pre></td><td class="code"><pre><span class="line"><span class="comment">//MetricsCollectorProxy使用举例</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">37</span></pre></td><td class="code"><pre><span class="line">MetricsCollectorProxy proxy = <span class="keyword">new</span> MetricsCollectorProxy();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">38</span></pre></td><td class="code"><pre><span class="line">IUserController userController = (IUserController) proxy.createProxy(<span class="keyword">new</span> UserController());</span></pre></td></tr></table></figure>
+
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>代理模式最常用的应用场景就是在业务系统中开发一些非功能性需求，比如：监控、统计、鉴权、限流、事务、幂等、日志。我们将这些附加功能与业务功能解耦，放到代理类中统一处理，让目标类只需要关注业务方面的逻辑即可。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/" data-id="ck8x5d71l0000a69k1qtz0idm" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-使用Jmeter进行压力测试" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2020/03/25/%E4%BD%BF%E7%94%A8Jmeter%E8%BF%9B%E8%A1%8C%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95/" class="article-date">
@@ -103,7 +147,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/03/25/%E4%BD%BF%E7%94%A8Jmeter%E8%BF%9B%E8%A1%8C%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95/" data-id="ck879wg040003xx9kh7qc6drm" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/03/25/%E4%BD%BF%E7%94%A8Jmeter%E8%BF%9B%E8%A1%8C%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95/" data-id="ck8x5d71u0003a69k81o30yyw" class="article-share-link">Share</a>
       
       
     </footer>
@@ -167,7 +211,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/03/25/%E5%88%9B%E5%BB%BA%E5%9E%8B%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E5%AD%A6%E4%B9%A0%E6%80%BB%E7%BB%93/" data-id="ck879wg0d0007xx9kfvgx3nb5" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/03/25/%E5%88%9B%E5%BB%BA%E5%9E%8B%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E5%AD%A6%E4%B9%A0%E6%80%BB%E7%BB%93/" data-id="ck8x5d72b0008a69kedyad6mi" class="article-share-link">Share</a>
       
       
     </footer>
@@ -217,7 +261,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/02/29/%E5%85%B3%E4%BA%8ECAS%E6%80%9D%E6%83%B3%E7%9A%84%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83/" data-id="ck879wg0e0008xx9k7dkj4h3n" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/02/29/%E5%85%B3%E4%BA%8ECAS%E6%80%9D%E6%83%B3%E7%9A%84%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83/" data-id="ck8x5d7280006a69kflgfatu8" class="article-share-link">Share</a>
       
       
     </footer>
@@ -262,7 +306,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck879wg070005xx9k6pc40efq" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck8x5d72a0007a69keygn0lpj" class="article-share-link">Share</a>
       
       
     </footer>
@@ -313,7 +357,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/" data-id="ck879wg010001xx9kfdfe16dr" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/" data-id="ck8x5d71q0001a69k9wejgsgt" class="article-share-link">Share</a>
       
       
     </footer>
@@ -359,7 +403,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" data-id="ck879wg0b0006xx9k8oom61hk" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" data-id="ck8x5d72j000aa69k9x571diq" class="article-share-link">Share</a>
       
       
     </footer>
@@ -406,7 +450,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck879wg0g000axx9k68px2zuj" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/24/%E5%85%B3%E4%BA%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ck8x5d72k000ba69kfdcp5l8g" class="article-share-link">Share</a>
       
       
     </footer>
@@ -455,7 +499,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" data-id="ck879wg0f0009xx9k3z8vd3e2" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/20/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8ARedis%E8%B5%84%E6%BA%90%E4%BC%98%E5%8C%96/" data-id="ck8x5d72i0009a69k0p1b4j2i" class="article-share-link">Share</a>
       
       
     </footer>
@@ -503,63 +547,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/" data-id="ck879wg030002xx9kd04v7i4q" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-使用docker部署我的第一个SpringBoot应用" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/" class="article-date">
-  <time datetime="2019-12-06T08:36:41.671Z" itemprop="datePublished">2019-12-06</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/">使用docker部署我的第一个SpringBoot应用</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Hi，我们又见面啦。最近Storm在研究docker部署相关的知识点，也是踩了不少坑，于是就有了下面的这篇文章，给准备捣鼓这一块的小伙伴一点前车之鉴，话不过说我们开始动手吧。</p>
-<p>ps：还是忍不住安利一波，因为Storm之前一直使用的主力生产工具是Eclipse，公司里面也是统一使用的这个工具，为此老大还自己研发了一些插件，这款IDE还是相当强大的。</p>
-<p>但是从两个月前上手idea开始就一发不可收拾，再也回不去了，墙裂安利大家去折腾一下，你也会爱不释手的。不用担心说团队的原因或者快捷键等等，因为这些都已经有人踩过坑啦。解决方案都是现成的，工欲善其事必先利其器，所以蠢蠢欲动不如行动吧，哈哈哈。</p>
-<h2 id="写在前面的话"><a href="#写在前面的话" class="headerlink" title="写在前面的话"></a>写在前面的话</h2><p>在这篇文章当中我不过多介绍SpringBoot项目的构建过程，因为随便搜一下就有一堆。简单的几项配置，就能跑起来，重要的还是需要检查一下你的环境。包括IDE，Maven，Java等等</p>
-<h2 id="安装docker"><a href="#安装docker" class="headerlink" title="安装docker"></a>安装docker</h2><p><a href="https://www.docker.com/" target="_blank" rel="noopener">下载传送门：docker官网</a><br>根据你的开发环境，选择安装相应的版本（实测基本使用mac和win是类似的）<br>安装就是傻瓜式的软件安装，<strong>注意</strong>设置你的docker镜像存放位置，因为它默认是放在<strong>C:盘</strong>的</p>
-<h2 id="设置docker"><a href="#设置docker" class="headerlink" title="设置docker"></a>设置docker</h2><p>启动docker后，在任务栏处会看到一个docker的小鲸鱼图标，右键打开Settings切换到General选项</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">勾选 Expose daemon on tcp://localhost:2375 without TLS</span></pre></td></tr></table></figure>
-<p>将docker连接的端口暴露到开发环境当中，便于我们连接docker操作我们的镜像和容器</p>
-<h2 id="idea配置docker环境"><a href="#idea配置docker环境" class="headerlink" title="idea配置docker环境"></a>idea配置docker环境</h2><p>接下来我们需要在idea中安装一个docker的插件<strong>Docker integration</strong><br>打开idea，从File-&gt;Settings-&gt;Plugins-&gt;Install JetBrains plugin进入插件安装界面，在搜索框中输入docker，可以看到Docker integration，点击右边的Install按钮进行安装。</p>
-<p>安装后重启idea，从File-&gt;Settings-&gt;Build,Execution,Deployment-&gt;Docker打开配置界面<br>新建一个docker连接，名字随意，将上面我们勾选的地址复制到TCP socket选项中 看到下方窗体中出现Connection Successful就说明配置成功啦</p>
-<h2 id="部署项目到docker"><a href="#部署项目到docker" class="headerlink" title="部署项目到docker"></a>部署项目到docker</h2><h3 id="项目打包"><a href="#项目打包" class="headerlink" title="项目打包"></a>项目打包</h3><p>首先我们要先将我们构建好的SpringBoot项目打包，这里使用到maven的构建工具。<br>在SpringBoot项目的pom文件中加入如下配置：</p>
-<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line">	<span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">		<span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>maven-antrun-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line">			<span class="tag">&lt;<span class="name">executions</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line">				<span class="tag">&lt;<span class="name">execution</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line">					<span class="tag">&lt;<span class="name">id</span>&gt;</span>SpringBootApp<span class="tag">&lt;/<span class="name">id</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line">					<span class="tag">&lt;<span class="name">phase</span>&gt;</span>package<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line">					<span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line">						<span class="tag">&lt;<span class="name">tasks</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">11</span></pre></td><td class="code"><pre><span class="line">							<span class="tag">&lt;<span class="name">copy</span> <span class="attr">todir</span>=<span class="string">"docker"</span> <span class="attr">file</span>=<span class="string">"target/$&#123;project.artifactId&#125;-								$&#123;project.version&#125;.$&#123;project.packaging&#125;"</span> /&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">12</span></pre></td><td class="code"><pre><span class="line">						<span class="tag">&lt;/<span class="name">tasks</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">13</span></pre></td><td class="code"><pre><span class="line">					<span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">14</span></pre></td><td class="code"><pre><span class="line">					<span class="tag">&lt;<span class="name">goals</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">15</span></pre></td><td class="code"><pre><span class="line">						<span class="tag">&lt;<span class="name">goal</span>&gt;</span>run<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">16</span></pre></td><td class="code"><pre><span class="line">					<span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">17</span></pre></td><td class="code"><pre><span class="line">				<span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">18</span></pre></td><td class="code"><pre><span class="line">			<span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">19</span></pre></td><td class="code"><pre><span class="line">		<span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">20</span></pre></td><td class="code"><pre><span class="line">	<span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">21</span></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span></pre></td></tr></table></figure>
-<h3 id="构建镜像-部署docker"><a href="#构建镜像-部署docker" class="headerlink" title="构建镜像 部署docker"></a>构建镜像 部署docker</h3><p>到这一步，我们就要开始进入关键点啦，前面都是准备工作。<br>首先，在项目的根目录（注意是根，不是src或者mian）新建一个docker文件夹用于存放docker相关的文件<br>新建一个Dockerfile文件 （这个是镜像构建文件，即告诉docker需要为我们的项目准备什么环境）<br>具体内容如下：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">FROM java:8u111</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line">VOLUME /tmp</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">ADD *.jar app.jar</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line">EXPOSE 8088</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line">ENTRYPOINT [<span class="string">"java"</span>,<span class="string">"-jar"</span>,<span class="string">"/app.jar"</span>]</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line"><span class="comment"># Ubuntu 时区</span></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line">RUN cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime</span></pre></td></tr></table></figure>
-<p>如上配置，说明我们的项目运行在java8环境当中，使用的是Ubuntu系统的环境，将8088端口映射到docker环境之外，我们就可以在宿主机（开发机器）访问到这个端口，其他配置具体细节可以自行Google</p>
-<p>配置好Dockerfile之后，我们右键它create docker/Dockerfile 在docker配置对话框中输入容器的名称<br>添加端口映射8088:8088<br>添加在构建之前运行的maven命令：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">clean package -Dmaven.test.skip = <span class="literal">true</span></span></pre></td></tr></table></figure>
-<p>构建项目时，会自动将target下打好的jar复制到项目根目录，我们发布到docker时会使用这个jar。</p>
-<h2 id="运行"><a href="#运行" class="headerlink" title="运行"></a>运行</h2><p>一切准备就绪，接下来我们右键运行Dockerfile文件，在docker文件夹下就会出现打好的项目jar包，docker就开始构建镜像，配置容器，然后发布jar包到容器的tmp目录下，最后启动项目，你就可以在插件的控制台看到Spring的Banner以及相关启动日志啦。</p>
-<h2 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h2><p>以上就是这一期docker部署我的第一个SpringBoot项目的全部内容啦，大家多动手试试吧。可能会有细节没有把握到，请多多包涵，我们下期见吧。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E4%B8%AASpringBoot%E5%BA%94%E7%94%A8/" data-id="ck879wg050004xx9k4ope45xq" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2019/12/06/%E4%BD%BF%E7%94%A8docker%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84Eureka%E9%9B%86%E7%BE%A4/" data-id="ck8x5d71v0004a69k3j8kh9gn" class="article-share-link">Share</a>
       
       
     </footer>
@@ -592,7 +580,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">March 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/12/">December 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/11/">November 2019</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">April 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">March 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/12/">December 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/11/">November 2019</a></li></ul>
     </div>
   </div>
 
@@ -603,6 +591,10 @@
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/">代理模式</a>
+          </li>
         
           <li>
             <a href="/2020/03/25/%E4%BD%BF%E7%94%A8Jmeter%E8%BF%9B%E8%A1%8C%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95/">使用Jmeter进行压力测试</a>
@@ -618,10 +610,6 @@
         
           <li>
             <a href="/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/">关于单元测试的一点思考</a>
-          </li>
-        
-          <li>
-            <a href="/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/">mysql慢查询分析</a>
           </li>
         
       </ul>
