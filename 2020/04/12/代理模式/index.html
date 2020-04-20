@@ -7,14 +7,14 @@
   
   <title>代理模式 | Stormの博客</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="代理模式前言作为结构型设计模式的一种，代理模式解决的是关于扩展与原有业务不太相关的功能的问题。当我们需要对一些功能进行统一增强（一些公关的功能），但是又不侵入原有代码的时候，代理模式就能发挥大作用。 例如我们熟知的日志功能，关于Spring AOP 的前置，环绕，后置通知等等。大多是基于代理模式来实现的，所谓代理就是代替被代理人（对象）来执行一些事情。 最简单的实现，即在代理类中注入被代理的对象，">
+  <meta name="description" content="前言作为结构型设计模式的一种，代理模式解决的是关于扩展与原有业务不太相关的功能的问题。当我们需要对一些功能进行统一增强（一些公关的功能），但是又不侵入原有代码的时候，代理模式就能发挥大作用。 例如我们熟知的日志功能，关于Spring AOP 的前置，环绕，后置通知等等。大多是基于代理模式来实现的，所谓代理就是代替被代理人（对象）来执行一些事情。 最简单的实现，即在代理类中注入被代理的对象，实现与代">
 <meta property="og:type" content="article">
 <meta property="og:title" content="代理模式">
 <meta property="og:url" content="http:&#x2F;&#x2F;yoursite.com&#x2F;2020&#x2F;04&#x2F;12&#x2F;%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F&#x2F;index.html">
 <meta property="og:site_name" content="Stormの博客">
-<meta property="og:description" content="代理模式前言作为结构型设计模式的一种，代理模式解决的是关于扩展与原有业务不太相关的功能的问题。当我们需要对一些功能进行统一增强（一些公关的功能），但是又不侵入原有代码的时候，代理模式就能发挥大作用。 例如我们熟知的日志功能，关于Spring AOP 的前置，环绕，后置通知等等。大多是基于代理模式来实现的，所谓代理就是代替被代理人（对象）来执行一些事情。 最简单的实现，即在代理类中注入被代理的对象，">
+<meta property="og:description" content="前言作为结构型设计模式的一种，代理模式解决的是关于扩展与原有业务不太相关的功能的问题。当我们需要对一些功能进行统一增强（一些公关的功能），但是又不侵入原有代码的时候，代理模式就能发挥大作用。 例如我们熟知的日志功能，关于Spring AOP 的前置，环绕，后置通知等等。大多是基于代理模式来实现的，所谓代理就是代替被代理人（对象）来执行一些事情。 最简单的实现，即在代理类中注入被代理的对象，实现与代">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-04-12T14:31:28.240Z">
+<meta property="og:updated_time" content="2020-04-12T14:35:05.245Z">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternate" href="/atom.xml" title="Stormの博客" type="application/atom+xml">
@@ -88,7 +88,7 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h1 id="代理模式"><a href="#代理模式" class="headerlink" title="代理模式"></a>代理模式</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>作为结构型设计模式的一种，代理模式解决的是关于扩展与原有业务不太相关的功能的问题。当我们需要对一些功能进行统一增强（一些公关的功能），但是又不侵入原有代码的时候，代理模式就能发挥大作用。</p>
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>作为结构型设计模式的一种，代理模式解决的是关于扩展与原有业务不太相关的功能的问题。当我们需要对一些功能进行统一增强（一些公关的功能），但是又不侵入原有代码的时候，代理模式就能发挥大作用。</p>
 <p>例如我们熟知的日志功能，关于Spring AOP 的前置，环绕，后置通知等等。大多是基于代理模式来实现的，所谓代理就是代替被代理人（对象）来执行一些事情。</p>
 <p>最简单的实现，即在代理类中注入被代理的对象，实现与代理对象同样的接口，在实现方法当中增加目标逻辑，再调用被代理类的目标方法。使用时，我们直接使用代理对象代替目标对象来完成原有的逻辑处理。</p>
 <h2 id="动态代理"><a href="#动态代理" class="headerlink" title="动态代理"></a>动态代理</h2><p>简单的代理模式虽然解决了代码侵入的问题，但是因为设计模式的引入使得复杂度也有所上升。因为在代理类中我们又把接口所有的方法又重新实现了一遍，基本上没有太大的变动，这造成了很多重复的工作。另外假如我们要增强的功能不止一个的话，我们就需要创建多个代理类来达到目的了。这样的话类结构就会膨胀很多。</p>
@@ -100,7 +100,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/" data-id="ck8x5d71l0000a69k1qtz0idm" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/" data-id="ck9830c9g0004579khq12dsr3" class="article-share-link">Share</a>
       
       
     </footer>
@@ -108,6 +108,15 @@
   
     
 <nav id="article-nav">
+  
+    <a href="/2020/04/20/%E6%A1%A5%E6%8E%A5%E6%A8%A1%E5%BC%8F/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          桥接模式
+        
+      </div>
+    </a>
   
   
     <a href="/2020/03/25/%E4%BD%BF%E7%94%A8Jmeter%E8%BF%9B%E8%A1%8C%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95/" id="article-nav-older" class="article-nav-link-wrap">
@@ -149,6 +158,10 @@
       <ul>
         
           <li>
+            <a href="/2020/04/20/%E6%A1%A5%E6%8E%A5%E6%A8%A1%E5%BC%8F/">桥接模式</a>
+          </li>
+        
+          <li>
             <a href="/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/">代理模式</a>
           </li>
         
@@ -162,10 +175,6 @@
         
           <li>
             <a href="/2020/02/29/%E5%85%B3%E4%BA%8ECAS%E6%80%9D%E6%83%B3%E7%9A%84%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83/">关于CAS思想的一些思考</a>
-          </li>
-        
-          <li>
-            <a href="/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/">关于单元测试的一点思考</a>
           </li>
         
       </ul>
