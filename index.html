@@ -67,6 +67,48 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-优雅缩扩容" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/12/16/%E4%BC%98%E9%9B%85%E7%BC%A9%E6%89%A9%E5%AE%B9/" class="article-date">
+  <time datetime="2020-12-16T13:02:06.969Z" itemprop="datePublished">2020-12-16</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/12/16/%E4%BC%98%E9%9B%85%E7%BC%A9%E6%89%A9%E5%AE%B9/">优雅缩扩容</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近接到一个需求，因为我们所处的业务领域流量具有非常强的周期性，因此对于微服务周期性的缩扩容是在所难免的，毕竟服务器资源都是耗钱的主。缩扩容会引发一系列的问题，例如访问中断，必然会产生错误的数据，虽然不在核心服务时段，但是也不可避免的引发一些问题。对于已经接收的流量，我们可以使用“优雅关机”来处理，先在服务注册中心注销我们的服务，停止接收新的请求，然后在真正停机前休眠一段时间让系统将残余的请求消化掉。<br>但是对于一些比较后端，或者异步的任务，或者是持续的流数据，又或者是消息处理等等，这类任务可能耗时比较久就不能这么处理了。</p>
+<h2 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h2><p>我们要能够在不影响任务执行的情况下，对http请求能力进行缩扩容。但是任务基本上就是不能停机的。所以很自然的想到把http请求处理与task分开，因此借助配置我们可以选择在实例上觉得是否加载这些任务来做到分离。例如把它配置在jvm的环境变量中，然后在通过@Conditional结合@Configuration来动态加载，这样就可以让运行task的实例不停机，而随意对service进行缩扩容操作了。</p>
+<h2 id="show-me-the-code"><a href="#show-me-the-code" class="headerlink" title="show me the code"></a>show me the code</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">#控制service中的task任务是否加载 这个属性会配置在jvm环境变量中 默认值为true 加载</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line">service:</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line">  task:</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line">    enable: $&#123;service.task.enable:true&#125;</span></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">&#x2F;**</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line"> * @Description 根据配置，动态注入service后台定时调度的任务和kafka消息处理Bean，部署时task与用户请求处理实例分开【同一工程】，减少缩扩容时对任务调度的影响</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line"> * @date 2020.12.10 13:59</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line"> *&#x2F;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line">@ConditionalOnProperty(name &#x3D; &quot;service.task.enable&quot;, havingValue &#x3D; &quot;true&quot;)</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line">@Configuration</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line">public class ServiceTaskConfiguration &#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line">@Bean</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line">    public Task task()&#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line">        return new Task();</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">11</span></pre></td><td class="code"><pre><span class="line">    &#125;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">12</span></pre></td><td class="code"><pre><span class="line">&#125;</span></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">@ConditionalOnProperty注解源码 其实和实现Conditional接口是一样的效果</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">2</span></pre></td><td class="code"><pre><span class="line">可以接收value和name参数进行条件匹配，来决定是否加载被修饰的Bean</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">3</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">4</span></pre></td><td class="code"><pre><span class="line">@Retention(RetentionPolicy.RUNTIME)</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">5</span></pre></td><td class="code"><pre><span class="line">@Target(&#123;ElementType.TYPE, ElementType.METHOD&#125;)</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">6</span></pre></td><td class="code"><pre><span class="line">@Documented</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">7</span></pre></td><td class="code"><pre><span class="line">@Conditional(&#123;OnPropertyCondition.class&#125;)</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">8</span></pre></td><td class="code"><pre><span class="line">public @interface ConditionalOnProperty &#123;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">9</span></pre></td><td class="code"><pre><span class="line">    String[] value() default &#123;&#125;;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">10</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">11</span></pre></td><td class="code"><pre><span class="line">    String prefix() default &quot;&quot;;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">12</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">13</span></pre></td><td class="code"><pre><span class="line">    String[] name() default &#123;&#125;;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">14</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">15</span></pre></td><td class="code"><pre><span class="line">    String havingValue() default &quot;&quot;;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">16</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">17</span></pre></td><td class="code"><pre><span class="line">    boolean matchIfMissing() default false;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">18</span></pre></td><td class="code"><pre><span class="line"></span></pre></td></tr><tr><td class="gutter"><pre><span class="line">19</span></pre></td><td class="code"><pre><span class="line">    boolean relaxedNames() default true;</span></pre></td></tr><tr><td class="gutter"><pre><span class="line">20</span></pre></td><td class="code"><pre><span class="line">&#125;</span></pre></td></tr></table></figure>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2020/12/16/%E4%BC%98%E9%9B%85%E7%BC%A9%E6%89%A9%E5%AE%B9/" data-id="ckirfkwvh0003qzu50ush4zzp" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-接口统一脱敏处理" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2020/12/03/%E6%8E%A5%E5%8F%A3%E7%BB%9F%E4%B8%80%E8%84%B1%E6%95%8F%E5%A4%84%E7%90%86/" class="article-date">
@@ -109,7 +151,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/12/03/%E6%8E%A5%E5%8F%A3%E7%BB%9F%E4%B8%80%E8%84%B1%E6%95%8F%E5%A4%84%E7%90%86/" data-id="ckifpm8cr000af1u588znfdzr" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/12/03/%E6%8E%A5%E5%8F%A3%E7%BB%9F%E4%B8%80%E8%84%B1%E6%95%8F%E5%A4%84%E7%90%86/" data-id="ckirfkwvs000cqzu5eu4gbvsb" class="article-share-link">Share</a>
       
       
     </footer>
@@ -150,7 +192,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/04/20/%E8%A3%85%E9%A5%B0%E5%99%A8%E6%A8%A1%E5%BC%8F/" data-id="ckifpm8cw000df1u5fs5cff1s" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/04/20/%E8%A3%85%E9%A5%B0%E5%99%A8%E6%A8%A1%E5%BC%8F/" data-id="ckirfkwvt000dqzu55etq8ybe" class="article-share-link">Share</a>
       
       
     </footer>
@@ -191,7 +233,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/04/20/%E6%A1%A5%E6%8E%A5%E6%A8%A1%E5%BC%8F/" data-id="ckifpm8ct000bf1u5dvnr8jz5" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/04/20/%E6%A1%A5%E6%8E%A5%E6%A8%A1%E5%BC%8F/" data-id="ckirfkwvp000aqzu52cbuhv1y" class="article-share-link">Share</a>
       
       
     </footer>
@@ -235,7 +277,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/" data-id="ckifpm8cc0002f1u5d4s04nhm" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/" data-id="ckirfkwve0001qzu590tu0wi1" class="article-share-link">Share</a>
       
       
     </footer>
@@ -281,7 +323,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/03/25/%E4%BD%BF%E7%94%A8Jmeter%E8%BF%9B%E8%A1%8C%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95/" data-id="ckifpm8cd0003f1u5ciyv3v1o" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/03/25/%E4%BD%BF%E7%94%A8Jmeter%E8%BF%9B%E8%A1%8C%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95/" data-id="ckirfkwvk0006qzu5ez6c9d7e" class="article-share-link">Share</a>
       
       
     </footer>
@@ -345,7 +387,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/03/25/%E5%88%9B%E5%BB%BA%E5%9E%8B%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E5%AD%A6%E4%B9%A0%E6%80%BB%E7%BB%93/" data-id="ckifpm8ck0009f1u58tuca8i9" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/03/25/%E5%88%9B%E5%BB%BA%E5%9E%8B%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E5%AD%A6%E4%B9%A0%E6%80%BB%E7%BB%93/" data-id="ckirfkwvo0009qzu5fiaa7gda" class="article-share-link">Share</a>
       
       
     </footer>
@@ -395,7 +437,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/02/29/%E5%85%B3%E4%BA%8ECAS%E6%80%9D%E6%83%B3%E7%9A%84%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83/" data-id="ckifpm8cj0008f1u53d0ydgb7" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/02/29/%E5%85%B3%E4%BA%8ECAS%E6%80%9D%E6%83%B3%E7%9A%84%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83/" data-id="ckirfkwvj0005qzu52pjtck0r" class="article-share-link">Share</a>
       
       
     </footer>
@@ -440,7 +482,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ckifpm8cf0004f1u50jbye4nj" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/01/17/%E5%85%B3%E4%BA%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" data-id="ckirfkwvl0007qzu58oni1jtb" class="article-share-link">Share</a>
       
       
     </footer>
@@ -491,53 +533,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/" data-id="ckifpm8c60000f1u5afrv2tg3" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-记一次线上内存溢出" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" class="article-date">
-  <time datetime="2020-01-07T12:25:28.290Z" itemprop="datePublished">2020-01-07</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/">记一次线上内存溢出</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>今天上班刚坐到位置上，准备开始摸鱼。呸，开始工作。产品就在钉钉上怼过来一张截图，图上显示dmp系统的几个在跑任务挂了，最后运行时间是昨天下午，状态还是运行中。</p>
-<p>于是我放下手中还没啃完的烧麦，开始bug时间。从表象上来看，看不出是什么问题，因为这个业务流程相对来说比较长，每一个环节都有可能出现异常，也许是因为没有考虑到的异常未被捕获造成的。心里这样想着，cd到这个业务昨天的日志文件，是他是他就是他，我们的老朋友。看到这东西，莫名开始激动了起来呢，毕竟是线上为数不多可以看到的情况。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">Caused by: java.lang.OutOfMemoryError: GC overhead limit exceeded</span></pre></td></tr></table></figure>
-<p>在此之前呢还有</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span></pre></td><td class="code"><pre><span class="line">nested exception is com.mongodb.MongoException$CursorNotFound: Cursor 2114193476805984430 not found on server</span></pre></td></tr></table></figure>
-
-<p>于是自然的开始Google一把这个错误，说是驱动版本的问题或者响应超时。快速排出了第一种情况，那么MongoDB怎么就超时了呢。细想一下，最近开发的功能。有一处读取Hive清洗的dmp原始数据到MongoDB，这个部分是写过程但是并没有出现Hive相关的报错信息。因此最大的可能就是落在读取MongoDB这部分数据打包成压缩文件的这个点了。</p>
-<p>果然排查之后发现，在昨天的下午这个时间点。有业务人员操作了一个400W数据的包体，并且使用了其管理的5个账号。当时为了能够在同一时间处理多个任务，以及考虑到第一期清洗数据单个包体不会超过300W的情况下，开启线程池同时执行的最大线程数设置成了8。</p>
-<p>因此在这种情况下，几乎同一时段加载到内存当中的数据为5x400W=2000W 而该Java进程设置的最大内存为4G，所以超出了内存上限导致溢出。</p>
-<p>问题定位到了，就好解决了。与产品和运维沟通。该业务并不要求实时性，因此把并发线程数降到3，同时扩展内存到6G。对于大数据量的包体，进行切分，分批次查询数据append进文件中再打包。同时观察线上运行情况，及时调整，做好失败重试方案。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://yoursite.com/2020/01/07/%E8%AE%B0%E4%B8%80%E6%AC%A1%E7%BA%BF%E4%B8%8A%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" data-id="ckifpm8cx000ef1u5bxql669p" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2020/01/15/mysql%E6%85%A2%E6%9F%A5%E8%AF%A2%E5%88%86%E6%9E%90/" data-id="ckirfkwvg0002qzu50bpnf8js" class="article-share-link">Share</a>
       
       
     </footer>
@@ -583,6 +579,10 @@
       <ul>
         
           <li>
+            <a href="/2020/12/16/%E4%BC%98%E9%9B%85%E7%BC%A9%E6%89%A9%E5%AE%B9/">优雅缩扩容</a>
+          </li>
+        
+          <li>
             <a href="/2020/12/03/%E6%8E%A5%E5%8F%A3%E7%BB%9F%E4%B8%80%E8%84%B1%E6%95%8F%E5%A4%84%E7%90%86/">接口统一脱敏处理</a>
           </li>
         
@@ -596,10 +596,6 @@
         
           <li>
             <a href="/2020/04/12/%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/">代理模式</a>
-          </li>
-        
-          <li>
-            <a href="/2020/03/25/%E4%BD%BF%E7%94%A8Jmeter%E8%BF%9B%E8%A1%8C%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95/">使用Jmeter进行压力测试</a>
           </li>
         
       </ul>
